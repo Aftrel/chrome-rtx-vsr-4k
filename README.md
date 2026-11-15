@@ -7,7 +7,7 @@ Enable NVIDIA's driver-side RTX Video Super Resolution (VSR) for full-screen UHD
 ## Requirements
 
 - Windows x64, Google Chrome with graphics acceleration, and an NVIDIA RTX GPU with RTX Video Super Resolution enabled in the NVIDIA app or Control Panel.
-- NVIDIA 621.01 with the exact `nvwgf2umx.dll` SHA-256 in `vsr_driver.py`. The launcher checks the binary before patching it. Tested with an RTX 5070 Ti and Chrome 157.0.8103.52.
+- An NVIDIA driver with a supported VSR function. Driver versions 621.01 and 621.24 have supported layouts. Playback testing used an RTX 5070 Ti and Chrome 157.0.8103.52.
 - Python 3.12 x64 with pip.
 
 ## Set up background mode
@@ -40,9 +40,11 @@ The background log is in `.runtime/current-chrome.log`. The previous `Chrome-RTX
 | 4096×1800 | H.264 at 30 fps |
 | 3840×1600 | H.264 at 30 fps |
 
-The wider formats were verified with short test clips on a 3840×2160 display. Driver traces and frame captures confirmed that VSR processed the video inside Chrome. The patch follows the displayed video rectangle, including letterboxed video and the few pixels Chrome can add when rounding to the swap-chain size. The NVIDIA driver reset the test Chrome GPU process twice during instrumented on/off comparisons. The cause is still unknown. Protected playback and long sessions remain unverified.
+The table summarizes playback testing on driver 621.01. The wider formats were verified with short test clips on a 3840×2160 display. Driver traces and frame captures confirmed that VSR processed the video inside Chrome. On 621.24, driver traces confirmed VSR processing in short clips at all five listed resolutions, including 10-bit HEVC at 4096×2160. The patch follows the displayed video rectangle, including letterboxed video and the few pixels Chrome can add when rounding to the swap-chain size. The NVIDIA driver reset the test Chrome GPU process twice during instrumented on/off comparisons on 621.01. The cause is still unknown. Protected playback and long sessions remain unverified.
 
 ## How it works
+
+The launcher locates the VSR function in `nvwgf2umx.dll` and checks the function loaded in Chrome before applying the hook. It can handle a driver update that moves the function while preserving its verified code layout. It skips the patch when the layout cannot be verified.
 
 The in-memory hook adjusts RTX VSR's input-area checks and scaling eligibility for near-full-width video on a 4K display. It applies to source widths from 3840 through 4096 and heights from 1440 through 2160 when the destination is near the screen width and preserves the aspect ratio. Disabling it removes the hooks from Chrome's GPU process. The NVIDIA driver file on disk stays intact.
 

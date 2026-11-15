@@ -32,12 +32,12 @@ function stop() {
     Interceptor.flush();
 }
 
-function start() {
+function start(scaleRva, rangeRva, areaRva) {
     if (enabled) return;
     const driver = Process.getModuleByName('nvwgf2umx.dll');
-    const scaleCheck = driver.base.add(0xd18e22);
-    const rangeCheck = driver.base.add(0xd18ea4);
-    const areaCheck = driver.base.add(0xd18fce);
+    const scaleCheck = driver.base.add(scaleRva);
+    const rangeCheck = driver.base.add(rangeRva);
+    const areaCheck = driver.base.add(areaRva);
     if (scaleCheck.readU32() !== 0x2454b60f || scaleCheck.add(4).readU8() !== 0x22 ||
         rangeCheck.readU16() !== 0xf981 || rangeCheck.add(2).readU32() !== baseline - minimumArea ||
         areaCheck.readU16() !== 0xf981 || areaCheck.add(2).readU32() !== baseline) {
@@ -70,6 +70,7 @@ function start() {
 
 rpc.exports = {
     driverPath() { return Process.findModuleByName('nvwgf2umx.dll')?.path ?? null; },
+    driverCode(rva, size) { return Process.getModuleByName('nvwgf2umx.dll').base.add(rva).readByteArray(size); },
     eligibleFrames() { return eligibleFrames; },
     start,
     stop

@@ -1,15 +1,15 @@
 """Load the verified driver hook and remove it on disconnect."""
 
-import hashlib
 from pathlib import Path
 import time
 
 import frida
 
+from vsr_layout import FUNCTION_SIZE, HOOK_OFFSETS, find_layout, matches_function
+
 
 ROOT = Path(__file__).resolve().parent
 RUNTIME = ROOT / '.runtime'
-DRIVER_HASH = 'bb6c170021de9a722eb16c6368faafda0266831d6ba9e8e343bce131f35949dc'
 
 
 class DriverAttachment:
@@ -28,10 +28,11 @@ class DriverAttachment:
                 driver = self.api.driver_path()
             if not driver:
                 raise RuntimeError('Chrome did not load the NVIDIA driver. Check graphics acceleration and GPU selection.')
-            with Path(driver).open('rb') as handle:
-                if hashlib.file_digest(handle, 'sha256').hexdigest() != DRIVER_HASH:
-                    raise RuntimeError('The loaded NVIDIA driver does not match the tested 621.01 binary.')
-            self.api.start()
+            addresses = find_layout(Path(driver))
+            function_start = addresses[0] - HOOK_OFFSETS[0]
+            if not matches_function(self.api.driver_code(function_start, FUNCTION_SIZE)):
+                raise RuntimeError('The VSR function loaded by Chrome differs from the verified layout.')
+            self.api.start(*addresses)
         except Exception:
             self.session.detach()
             raise
